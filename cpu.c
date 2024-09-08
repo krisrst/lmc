@@ -94,9 +94,9 @@ static int execute_instruction(struct lmc * lmc){
         case 9:
             if( lmc->ar == 1 ){
                 top_panel(lmc->in_pan);
-                sprintf(buf, "");
                 n = 0;
                 timeout(-1); // Blocking read
+                buf[0] = '\0';
                 while(1){
 
                     mvwprintw(lmc->in_win, 0, 0, "     ");
@@ -109,11 +109,16 @@ static int execute_instruction(struct lmc * lmc){
                         buf[n] = '\0';
                         break;
                     }
+                    else if( c == KEY_MOUSE ){}
                     else if( c == KEY_BACKSPACE ){
                         buf[n--] = ' ';
+                        if(n < 0) n = 0;
+                        buf[n] = '\0';
                     }
+                    else if( n > 5 ){}
                     else{
-                        buf[n++] = (char) c;
+                        buf[n++] = (char) (0xff & c);
+                        buf[n] = '\0';
                     }
                 }
                 temp = strtol( buf, &errp, 10 );
@@ -133,7 +138,7 @@ static int execute_instruction(struct lmc * lmc){
                 sprintf(buf, "%d", lmc->accumulator);
                 mvwprintw(lmc->out_win, 0,0, "%s", buf);
             }
-            else if( lmc->ar == 3 ){
+            else if( lmc->ar == 22 ){
                 sprintf(buf, "%c", lmc->accumulator);
                 mvwprintw(lmc->out_win, 0,0, "%s", buf);
             }

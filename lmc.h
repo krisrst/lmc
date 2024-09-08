@@ -9,13 +9,6 @@
 
 #define ASSEMBLER_MAX_CHAR 1000000
 
-enum lmc_focus{
-    FOCUS_ASSEMBLER,
-    FOCUS_MEMORY,
-    FOCUS_PC,
-    FOCUS_NONE
-};
-
 enum lmc_state{
     LMC_HALTED,
     LMC_RUNNING,
@@ -84,12 +77,6 @@ struct lmc {
     WINDOW * status_win;
     WINDOW * help_win;
     WINDOW * memory_win[100];
-
-    /*
-     * What window has focus
-     * */
-    enum lmc_focus focus;
-    int cell_focus;
 
     /*
      * Memory that contains the assembler code

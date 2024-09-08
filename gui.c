@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <errno.h>
 
 static void msleep(int ms){
     usleep(ms*1000);
@@ -116,8 +117,8 @@ static void init_background(struct lmc * lmc){
                     GUI_CELL_OFF_X, GUI_CELL_OFF_Y, '-', '|', '*', buf);
 //                    "%u", i + j*10);
 
-            lmc->memory_win[i+j*10] = newwin( 1, 4, GUI_MEMORY_FIELD_START_Y + 3 + j*5,
-                    GUI_MEMORY_FIELD_START_X + 7 + i*9);
+            lmc->memory_win[i+j*10] = newwin( 1, 5, GUI_MEMORY_FIELD_START_Y + 3 + j*GUI_CELL_HEIGHT,
+                    GUI_MEMORY_FIELD_START_X + 7 + i*GUI_CELL_WIDTH);
             lmc->memory_pan[i+j*10] = new_panel( lmc->memory_win[i+j*10] );
         }
     }
@@ -148,7 +149,7 @@ static void init_background(struct lmc * lmc){
             GUI_AR_OFF_Y + 1, GUI_AR_OFF_X + GUI_AR_WIDTH/2);
     lmc->ar_pan = new_panel( lmc->ar_win );
 
-    lmc->acc_win = newwin(1, 3,
+    lmc->acc_win = newwin(1, 5,
             GUI_ACC_OFF_Y + 1, GUI_ACC_OFF_X + GUI_ACC_WIDTH/2);
     lmc->acc_pan = new_panel( lmc->acc_win );
 
@@ -200,13 +201,65 @@ static int within_region(int x, int y, int w, int h, int mx, int my){
     return 0;
 }
 
+static void read_to_window(struct lmc * lmc, WINDOW * win, PANEL * pan,
+        int * current, int min, int max, char * clear){
+
+    int n, c;
+    int temp;
+    char * errp;
+    char buf[128];
+
+    top_panel(pan);
+    sprintf(buf, "%s", clear);
+    n = 0;
+    timeout(-1); // Blocking read
+    while(1){
+
+        mvwprintw(win, 0, 0, "%s", clear);
+        mvwprintw(win, 0, 0, "%s", buf);
+        update_panels();
+        doupdate();
+        log_printf(lmc, "test22\n");
+
+        c = getch();
+        if( c == '\n' ){
+            buf[n] = '\0';
+            break;
+        }
+        else if( c == KEY_MOUSE ){}
+        else if( c == KEY_BACKSPACE ){
+            buf[n--] = ' ';
+            if(n < 0) n = 0;
+            buf[n] = '\0';
+        }
+        else{
+            buf[n++] = (char) c;
+            buf[n] = '\0';
+        }
+    }
+    temp = strtol( buf, &errp, 10 );
+    log_printf(lmc, "temp=%d buf=%s\n", temp, buf);
+
+    // If this triggers, we have to assume that the
+    // programmer meant a label, and we'll need to find it
+    if( errno || (strlen(errp) != 0) ){
+        log_printf(lmc, "invalid input! (%s)\n", buf);
+        mvwprintw(win, 0, 0, "%s", clear);
+        return;
+    }
+
+    if( temp < min || temp > max ){
+        mvwprintw(win, 0, 0, "%s", clear);
+    }
+    else
+        *current = temp;
+}
+
 static void select_window(struct lmc * lmc, int x, int y){
 
     if( within_region(GUI_ASSEMBLY_FIELD_START_X, GUI_ASSEMBLY_FIELD_START_Y,
                 GUI_ASSEMBLY_FIELD_WIDTH, GUI_ASSEMBLY_FIELD_HEIGHT,
                 x, y)){
-        lmc->focus = FOCUS_ASSEMBLER;
-        wrefresh( lmc->assembler_win );
     }
 
     if( within_region(GUI_MEMORY_FIELD_START_X, GUI_MEMORY_FIELD_START_Y,
@@ -235,10 +288,8 @@ static void select_window(struct lmc * lmc, int x, int y){
         assert(cell >= 0);
         assert(cell < 100);
 
-        lmc->focus = FOCUS_MEMORY;
-        //wrefresh(lmc->memory_win[ cell ]);
-
-        lmc->cell_focus = cell;
+        read_to_window( lmc, lmc->memory_win[ cell ], lmc->memory_pan[ cell ],
+                &lmc->memory[ cell ], -999, 999, "     ");
     }
 }
 
@@ -295,6 +346,7 @@ static void update_window_contents(struct lmc * lmc){
             buf[0] = '-';
         else
             buf[0] = ' ';
+        mvwprintw(lmc->memory_win[i], 0, 0, "     ");
         mvwprintw(lmc->memory_win[i], 0, 0, "%s", buf);
     }
 }
@@ -307,23 +359,10 @@ static void* gui_thread(void * opaque){
 
     lmc = (struct lmc *) opaque;
 
-    update_window_contents(lmc);
-    //refresh_all(lmc);
 
     while(!lmc->shutdown){
 
-#if 0
-        switch(lmc->state){
-            case LMC_HELP:
-
-                break;
-            case LMC_CODING:
-                //wrefresh(lmc->assembler_win);
-                break;
-            default:
-                log_printf(lmc, "Error: no such state (%d)\n", (int) lmc->state);
-        }
-#endif
+        update_window_contents(lmc);
 
         update_panels();
         doupdate();
@@ -399,6 +438,8 @@ int gui_init(struct lmc * lmc){
     mmask_t dummy;
 
     initscr();
+
+    noecho();
 
     timeout(0);
 

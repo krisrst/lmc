@@ -25,7 +25,6 @@ int main(int argc, char *argv[]){
 
     for(i=0; i<100; i++) lmc->memory[i] = 0;
 
-    lmc->focus = FOCUS_NONE;
     lmc->state = LMC_CODING;
 
     lmc->output_mem = calloc(ASSEMBLER_MAX_CHAR, 1);
