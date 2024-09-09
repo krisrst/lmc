@@ -145,6 +145,7 @@ static int execute_instruction(struct lmc * lmc){
             else{
                 ret = -1;
                 log_printf(lmc, "Invalid AR (%d) for IR=9\n", lmc->ar);
+                lmc->state = LMC_HALTED;
             }
             break;
 

@@ -46,6 +46,9 @@ static int is_instr(char * s){
     else if( ! strcasecmp(s, "BRP" ) ){
         return 1;
     }
+    else if( ! strcasecmp(s, "DAT" ) ){
+        return 1;
+    }
     return 0;
 }
 
@@ -74,7 +77,7 @@ int assemble(struct lmc * lmc){
 
     for(i=0; i < 50; i++){
         lmc->machinecode_mem[i] = 0;
-        sprintf(lmc->label_mem[i], "");
+        lmc->label_mem[i][0] = '\0';
         labels[i] = instrs[i] = addrss[i] = NULL;
         strncpy( assembler_mem[i], lmc->assembler_mem[i], 128 );
         assembler_mem[i][127] = '\0';
@@ -245,6 +248,14 @@ int assemble(struct lmc * lmc){
         else if( ! strcasecmp( instr, "OTC" ) ){
             machinecode = 9;
             address = 22;
+        }
+        else if( ! strcasecmp( instr, "DAT" ) ){
+            machinecode = 0;
+            if( (address < -999) ||
+                (address > 999) ){
+                log_printf(lmc, "DAT: address out of range (%d)\n", address);
+                return -1;
+            }
         }
         else{
             log_printf(lmc, "error on line %d (%s)\n", i, instr);

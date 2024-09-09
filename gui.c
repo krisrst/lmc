@@ -237,6 +237,7 @@ static void read_to_window(struct lmc * lmc, WINDOW * win, PANEL * pan,
             buf[n] = '\0';
         }
     }
+    timeout(0);
     temp = strtol( buf, &errp, 10 );
     log_printf(lmc, "temp=%d buf=%s\n", temp, buf);
 
@@ -260,6 +261,10 @@ static void select_window(struct lmc * lmc, int x, int y){
     if( within_region(GUI_ASSEMBLY_FIELD_START_X, GUI_ASSEMBLY_FIELD_START_Y,
                 GUI_ASSEMBLY_FIELD_WIDTH, GUI_ASSEMBLY_FIELD_HEIGHT,
                 x, y)){
+
+        top_panel(lmc->assembler_pan);
+        log_printf(lmc, "off y %d off x %d\n", y - GUI_ASSEMBLY_FIELD_START_Y,
+                x - GUI_ASSEMBLY_FIELD_START_X);
     }
 
     if( within_region(GUI_MEMORY_FIELD_START_X, GUI_MEMORY_FIELD_START_Y,

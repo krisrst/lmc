@@ -6,8 +6,11 @@
 #include <ncurses.h>
 #include <panel.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
-#define ASSEMBLER_MAX_CHAR 1000000
+#define LINE_MAX_LEN 128
 
 enum lmc_state{
     LMC_HALTED,
@@ -39,6 +42,11 @@ struct lmc {
      * LMC's state
      * */
     enum lmc_state state;
+
+    /*
+     * LMC's clock frequency in hertz
+     * */
+    unsigned int frq;
 
     /*
      * The pthread structures
@@ -81,10 +89,8 @@ struct lmc {
     /*
      * Memory that contains the assembler code
      * */
-    char assembler_mem[100][128];
-    char label_mem[100][128];
-    char * output_mem;
-    char * input_mem;
+    char assembler_mem[100][LINE_MAX_LEN];
+    char label_mem[100][LINE_MAX_LEN];
 
     /*
      * Memory containing assembled machine code
@@ -103,9 +109,16 @@ struct lmc {
     int minver;
 
     /*
-     * Log file
+     * Log file.
      * */
     FILE * log;
+
+    /*
+     * Assembler file.
+     * And it's last modified time.
+     * */
+    FILE * code_fp;
+    time_t code_mod;
 };
 
 #endif // LMC_H

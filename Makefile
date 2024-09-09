@@ -3,6 +3,7 @@ SRC := main.c
 SRC += gui.c
 SRC += log.c
 SRC += cpu.c
+SRC += util.c
 SRC += assembler.c
 
 OBJ := $(SRC:.c=.o)
