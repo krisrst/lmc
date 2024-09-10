@@ -30,10 +30,20 @@ static void read_assembler_code(struct lmc * lmc){
 
     fseek(lmc->code_fp, 0, SEEK_SET);
 
+    {
+        char dbg[512];
+        fread(dbg, 1, 32, lmc->code_fp);
+        log_printf(lmc, "read %s\n", dbg);
+    }
+
+    fseek(lmc->code_fp, 0, SEEK_SET);
+
     while ((n = getline(&line, &len, lmc->code_fp)) != -1) {
 
         // Replace delimiting '\n' with string terminate
         line[n-1] = '\0';
+
+        //log_printf(lmc, "%d: %s\n", i, line);
 
         if( n < LINE_MAX_LEN){
             sprintf(lmc->assembler_mem[i++], "%s", line);
@@ -44,6 +54,8 @@ static void read_assembler_code(struct lmc * lmc){
 
         if(i == 100) break;
     }
+
+    lmc->nlines = i;
 
     if( line ) free(line);
 
@@ -137,6 +149,15 @@ int main(int argc, char *argv[]){
         if( last_file_update( argv[1], &mod )){
             log_printf(lmc, "last_file_update failed!\n");
             keep_running = 0;
+            continue;
+        }
+
+        fclose(lmc->code_fp);
+        lmc->code_fp = fopen(argv[1], "r");
+        if( lmc->code_fp == NULL ){
+            fprintf(stderr, "Could not reopen %s: %s\n", argv[1], strerror(errno));
+            keep_running = 0;
+            continue;
         }
 
         if( mod > lmc->code_mod ){

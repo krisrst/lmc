@@ -90,12 +90,26 @@ struct lmc {
      * Memory that contains the assembler code
      * */
     char assembler_mem[100][LINE_MAX_LEN];
+
+    /*
+     * Memory that contains labels
+     * */
     char label_mem[100][LINE_MAX_LEN];
 
     /*
      * Memory containing assembled machine code
      * */
     int machinecode_mem[100];
+
+    /*
+     * Number of lines in assembler buffer
+     * */
+    int nlines;
+
+    /*
+     * Scrolling offset
+     * */
+    int scroll;
 
     /*
      * If 1, the LMC should start shutting down
@@ -117,6 +131,7 @@ struct lmc {
      * Assembler file.
      * And it's last modified time.
      * */
+    int code_fd;
     FILE * code_fp;
     time_t code_mod;
 };

@@ -67,11 +67,11 @@ static void init_background(struct lmc * lmc){
     draw_frame(GUI_MACHINECODE_FIELD_START_X, GUI_MACHINECODE_FIELD_START_Y,
             GUI_MACHINECODE_FIELD_WIDTH, GUI_MACHINECODE_FIELD_HEIGHT,
             '-', '|', '*', "");
-#endif
 
     draw_frame(GUI_OUTPUT_FIELD_START_X, GUI_OUTPUT_FIELD_START_Y,
             GUI_OUTPUT_FIELD_WIDTH, GUI_OUTPUT_FIELD_HEIGHT,
             '-', '|', '*', "OUTPUT");
+#endif
 
     draw_frame(GUI_CPU_FIELD_START_X, GUI_CPU_FIELD_START_Y,
             GUI_CPU_FIELD_WIDTH, GUI_CPU_FIELD_HEIGHT,
@@ -153,10 +153,11 @@ static void init_background(struct lmc * lmc){
             GUI_ACC_OFF_Y + 1, GUI_ACC_OFF_X + GUI_ACC_WIDTH/2);
     lmc->acc_pan = new_panel( lmc->acc_win );
 
-    lmc->out_win = newwin(GUI_OUTPUT_FIELD_HEIGHT-2,
-            GUI_OUTPUT_FIELD_WIDTH-4,
-            GUI_OUTPUT_FIELD_START_Y+1,
-            GUI_OUTPUT_FIELD_START_X+1);
+    lmc->out_win = newwin(GUI_OUTPUT_FIELD_HEIGHT,
+            GUI_OUTPUT_FIELD_WIDTH,
+            GUI_OUTPUT_FIELD_START_Y,
+            GUI_OUTPUT_FIELD_START_X);
+    box(lmc->out_win, '|', '-');
     lmc->out_pan = new_panel( lmc->out_win );
 
     lmc->in_win = newwin(1, 5, GUI_INPUT_FIELD_START_Y+1,
@@ -316,9 +317,32 @@ static void update_window_contents(struct lmc * lmc){
     int i;
     char buf[128];
 
+    // Assemblerfield
+    for(i=0; i < GUI_ASSEMBLY_FIELD_WIDTH - 2; i++)
+        buf[i] = ' ';
+    buf[GUI_ASSEMBLY_FIELD_WIDTH - 2] = '\0';
+
+    for(i=0; i < 50; i++)
+        mvwprintw(lmc->assembler_win, 1+i,1, "%s", buf);
+
     for(i=0; i < 50; i++){
-        mvwprintw(lmc->assembler_win, 1+i,1, "%s", lmc->assembler_mem[i]);
+        if( i >= lmc->nlines ) break;
+        mvwprintw(lmc->assembler_win, 1+i,1, "%s", lmc->assembler_mem[i+lmc->scroll]);
     }
+
+    // Machinecode field
+    for(i=0; i < GUI_MACHINECODE_FIELD_WIDTH - 2; i++)
+        buf[i] = ' ';
+    buf[GUI_MACHINECODE_FIELD_WIDTH - 2] = '\0';
+
+    for(i=0; i < 50; i++)
+        mvwprintw(lmc->machinecode_win, 1+i,1, "%s", buf);
+
+    for(i=0; i < 50; i++){
+        if( i >= (lmc->nlines - lmc->scroll)) break;
+        mvwprintw(lmc->machinecode_win, 1+i,1, "%d", lmc->machinecode_mem[i+lmc->scroll]);
+    }
+
 
     sprintf(buf, "%d", lmc->pc);
     mvwprintw(lmc->pc_win, 0,0, "%s", (const char*) buf);
@@ -388,13 +412,17 @@ static void* gui_thread(void * opaque){
         }
         else if( c >= 0 ){
             if( c == '?' ){
-                mvwprintw( lmc->help_win, 1,2, "Help topics for the LMC");
-                mvwprintw( lmc->help_win, 3,2, "CTRL+c:     Close the LMC");
-                mvwprintw( lmc->help_win, 4,2, "CTRL+a:     Run the assembler");
-                mvwprintw( lmc->help_win, 5,2, "?:          Open help");
-                mvwprintw( lmc->help_win, 6,2, "q:          Close help");
-                mvwprintw( lmc->help_win, 7,2, "r:          Run the LMC");
-                mvwprintw( lmc->help_win, 8,2, "s:          Step the LMC");
+                mvwprintw( lmc->help_win, 1,2,  "Help topics for the LMC");
+                mvwprintw( lmc->help_win, 3,2,  "CTRL+c:     Close the LMC.");
+                mvwprintw( lmc->help_win, 3,2,  "Arrow-up:   Scroll up.");
+                mvwprintw( lmc->help_win, 3,2,  "Arrow-down: Scroll down.");
+                mvwprintw( lmc->help_win, 4,2,  "r:          Run LMC in normal mode.");
+                mvwprintw( lmc->help_win, 5,2,  "s:          Run LMC in stepping mode.");
+                mvwprintw( lmc->help_win, 6,2,  "            Press this key again to advance one instruction.");
+                mvwprintw( lmc->help_win, 7,2,  "a:          Run the assembler.");
+                mvwprintw( lmc->help_win, 8,2,  "p:          Reset LMC.");
+                mvwprintw( lmc->help_win, 9,2,  "?:          Open help.");
+                mvwprintw( lmc->help_win, 10,2, "q:          Close help");
                 top_panel(lmc->help_pan);
                 show_panel(lmc->help_pan);
             }
@@ -403,22 +431,35 @@ static void* gui_thread(void * opaque){
                 hide_panel(lmc->help_pan);
                 top_panel(lmc->assembler_pan);
             }
-            else if( (lmc->state == LMC_CODING) && !strcmp("^A", unctrl(c))){
+            else if( (lmc->state == LMC_CODING) && (c == 'a') ){
                 ret = assemble( lmc );
                 if( ret ){
                     log_printf(lmc, "Could not assemble: error\n");
                 }
                 else{
-                    for(i=0; i < 50; i++){
-                        mvwprintw(lmc->machinecode_win, 1+i,1, "%d", lmc->machinecode_mem[i]);
+                    // Update memory contents
+                    for(i=0; i < 100; i++)
                         lmc->memory[i] = lmc->machinecode_mem[i];
-                        mvwprintw(lmc->memory_win[i], 0,1,"%d", lmc->memory[i]);
-                    }
                 }
             }
-            else if( (lmc->state == LMC_CODING) && !strcmp("^D", unctrl(c))){
+            else if( (lmc->state == LMC_CODING) && c == 's'){
                 log_printf(lmc, "in stepping state!\n");
                 lmc->state = LMC_STEPPING;
+            }
+            else if( (lmc->state == LMC_CODING) && c == 'r'){
+                log_printf(lmc, "in running state!\n");
+                lmc->state = LMC_RUNNING;
+            }
+            else if( (lmc->state == LMC_CODING) && c == KEY_UP){
+                log_printf(lmc, "key up!\n");
+                lmc->scroll++;
+                if(lmc->scroll > (100 - GUI_ASSEMBLY_FIELD_HEIGHT - 2))
+                    lmc->scroll = 100 - GUI_ASSEMBLY_FIELD_HEIGHT - 2;
+            }
+            else if( (lmc->state == LMC_CODING) && c == KEY_DOWN){
+                log_printf(lmc, "key down!\n");
+                lmc->scroll--;
+                if(lmc->scroll < 0) lmc->scroll = 0;
             }
             else if( (lmc->state == LMC_STEPPING) && c == 's'){
                 ret = run_execution_loop_once(lmc);
