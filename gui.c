@@ -164,17 +164,48 @@ static void init_background(struct lmc * lmc){
             GUI_INPUT_FIELD_START_X + 1);
     lmc->in_pan = new_panel( lmc->in_win );
 
+#if 0
     draw_frame(GUI_STATUS_FIELD_START_X, GUI_STATUS_FIELD_START_Y,
             GUI_STATUS_FIELD_WIDTH, GUI_STATUS_FIELD_HEIGHT,
             '-', '|', '*', "STATUS");
-    lmc->status_win = newwin(GUI_STATUS_FIELD_HEIGHT-2,
-            GUI_STATUS_FIELD_WIDTH-4,
-            GUI_STATUS_FIELD_START_Y+1,
-            GUI_STATUS_FIELD_START_X+1);
+#endif
+    lmc->status_win = newwin(GUI_STATUS_FIELD_HEIGHT,
+            GUI_STATUS_FIELD_WIDTH,
+            GUI_STATUS_FIELD_START_Y,
+            GUI_STATUS_FIELD_START_X);
+    box(lmc->status_win, '|', '-');
     lmc->status_pan = new_panel( lmc->status_win );
 
     update_panels();
 
+}
+
+void status_field_print(struct lmc * lmc, const char *fmt, ...){
+
+    int length, n, i;
+    char buf[STATUS_FIELD_WIDTH];
+    va_list va;
+
+    for(n=STATUS_FIELD_HEIGHT-1; n >= 1; n--){
+        memcpy(lmc->status_mem[n], lmc->status_mem[n-1], STATUS_FIELD_WIDTH);
+    }
+
+    va_start(va, fmt);
+
+    length = vsnprintf(buf, STATUS_FIELD_WIDTH, fmt, va);
+    va_end(va);
+
+    for(n=length; n < STATUS_FIELD_WIDTH; n++){
+        buf[n] = ' ';
+    }
+    buf[STATUS_FIELD_WIDTH-1] = '\0';
+
+    snprintf(lmc->status_mem[0], STATUS_FIELD_WIDTH, "%s", buf);
+
+    // Status field
+    for(i=0; i < STATUS_FIELD_HEIGHT; i++){
+        mvwprintw(lmc->status_win, 1+i, 1, "%s", lmc->status_mem[i]);
+    }
 }
 
 static void print_header(struct lmc * lmc){
@@ -343,10 +374,9 @@ static void update_window_contents(struct lmc * lmc){
         mvwprintw(lmc->machinecode_win, 1+i,1, "%d", lmc->machinecode_mem[i+lmc->scroll]);
     }
 
-    for(i=0; i < GUI_OUTPUT_FIELD_HEIGHT; i++){
+    for(i=0; i < OUTPUT_FIELD_HEIGHT; i++){
         mvwprintw(lmc->out_win, 1+i, 1, "%s", lmc->output_mem[i]);
     }
-
 
     sprintf(buf, "%d", lmc->pc);
     mvwprintw(lmc->pc_win, 0,0, "%s", (const char*) buf);
@@ -392,6 +422,8 @@ static void* gui_thread(void * opaque){
 
     lmc = (struct lmc *) opaque;
 
+    status_field_print(lmc, "Press '?' for help.");
+
     while(!lmc->shutdown){
 
         update_window_contents(lmc);
@@ -403,8 +435,10 @@ static void* gui_thread(void * opaque){
 
         if( lmc->state == LMC_RUNNING ){
             ret = run_execution_loop_once(lmc);
-            if(ret)
+            if(ret){
+                status_field_print(lmc, "Halted!");
                 lmc->state = LMC_HALTED;
+            }
         }
 
         if( c == KEY_MOUSE ){
@@ -422,16 +456,16 @@ static void* gui_thread(void * opaque){
         else if( c >= 0 ){
             if( c == '?' ){
                 mvwprintw( lmc->help_win, 1,2,  "Help topics for the LMC");
-                mvwprintw( lmc->help_win, 3,2,  "CTRL+c:     Close the LMC.");
+                mvwprintw( lmc->help_win, 2,2,  "CTRL+c:     Close the LMC.");
                 mvwprintw( lmc->help_win, 3,2,  "Arrow-up:   Scroll up.");
-                mvwprintw( lmc->help_win, 3,2,  "Arrow-down: Scroll down.");
-                mvwprintw( lmc->help_win, 4,2,  "r:          Run LMC in normal mode.");
-                mvwprintw( lmc->help_win, 5,2,  "s:          Run LMC in stepping mode.");
-                mvwprintw( lmc->help_win, 6,2,  "            Press this key again to advance one instruction.");
-                mvwprintw( lmc->help_win, 7,2,  "a:          Run the assembler.");
-                mvwprintw( lmc->help_win, 8,2,  "p:          Reset LMC.");
-                mvwprintw( lmc->help_win, 9,2,  "?:          Open help.");
-                mvwprintw( lmc->help_win, 10,2, "q:          Close help");
+                mvwprintw( lmc->help_win, 4,2,  "Arrow-down: Scroll down.");
+                mvwprintw( lmc->help_win, 5,2,  "r:          Run LMC in normal mode.");
+                mvwprintw( lmc->help_win, 6,2,  "s:          Run LMC in stepping mode.");
+                mvwprintw( lmc->help_win, 7,2,  "            Press this key again to advance one instruction.");
+                mvwprintw( lmc->help_win, 8,2,  "a:          Run the assembler and program the memory.");
+                mvwprintw( lmc->help_win, 9,2,  "p:          Reset LMC.");
+                mvwprintw( lmc->help_win, 10,2, "?:          Open help.");
+                mvwprintw( lmc->help_win, 11,2, "q:          Close help");
                 top_panel(lmc->help_pan);
                 show_panel(lmc->help_pan);
             }
@@ -443,18 +477,21 @@ static void* gui_thread(void * opaque){
             else if( (lmc->state == LMC_CODING) && (c == 'a') ){
                 ret = assemble( lmc );
                 if( ret ){
-                    log_printf(lmc, "Could not assemble: error\n");
+                    status_field_print(lmc, "Assembler failure!");
                 }
                 else{
+                    status_field_print(lmc, "Assembler success!");
                     // Update memory contents
                     for(i=0; i < 100; i++)
                         lmc->memory[i] = lmc->machinecode_mem[i];
                 }
             }
             else if( (lmc->state == LMC_CODING) && c == 's'){
+                status_field_print(lmc, "Stepping! 's' to step.");
                 lmc->state = LMC_STEPPING;
             }
             else if( (lmc->state == LMC_CODING) && c == 'r'){
+                status_field_print(lmc, "Running!");
                 lmc->state = LMC_RUNNING;
             }
             else if( (lmc->state == LMC_CODING) && c == KEY_UP){
@@ -468,11 +505,14 @@ static void* gui_thread(void * opaque){
             }
             else if( (lmc->state == LMC_STEPPING) && c == 's'){
                 ret = run_execution_loop_once(lmc);
-                if(ret)
+                if(ret){
+                    status_field_print(lmc, "Halted!");
                     lmc->state = LMC_HALTED;
+                }
             }
             else if( ((lmc->state == LMC_HALTED) || (lmc->state == LMC_CODING)) &&
                     c == 'p'){
+                status_field_print(lmc, "Press '?' for help.");
                 lmc->state = LMC_CODING;
                 lmc->accumulator = 0;
                 lmc->pc = 0;

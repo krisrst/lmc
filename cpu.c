@@ -93,13 +93,16 @@ static int execute_instruction(struct lmc * lmc){
         // I/O
         case 9:
             if( lmc->ar == 1 ){
+
+                status_field_print(lmc, "Enter number!");
                 top_panel(lmc->in_pan);
                 n = 0;
                 timeout(-1); // Blocking read
-                sprintf(buf, "0");
+                sprintf(buf, "%s", "");
                 while(1){
 
                     mvwprintw(lmc->in_win, 0, 0, "     ");
+                    mvwprintw(lmc->in_win, 0, 0, "%s", buf);
                     update_panels();
                     doupdate();
 
@@ -119,6 +122,10 @@ static int execute_instruction(struct lmc * lmc){
                         buf[n++] = (char) (0xff & c);
                         buf[n] = '\0';
                     }
+                }
+
+                if(n==0){
+                    sprintf(buf, "0");
                 }
                 temp = strtol( buf, &errp, 10 );
                 log_printf(lmc, "temp=%d buf=%s\n", temp, buf);

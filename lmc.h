@@ -15,6 +15,9 @@
 #define OUTPUT_FIELD_WIDTH 30
 #define OUTPUT_FIELD_HEIGHT 5
 
+#define STATUS_FIELD_WIDTH 28
+#define STATUS_FIELD_HEIGHT 4
+
 enum lmc_state{
     LMC_HALTED,
     LMC_RUNNING,
@@ -121,6 +124,11 @@ struct lmc {
     char output_mem[OUTPUT_FIELD_HEIGHT][OUTPUT_FIELD_WIDTH];
 
     /*
+     * Status field
+     * */
+    char status_mem[STATUS_FIELD_HEIGHT][STATUS_FIELD_WIDTH];
+
+    /*
      * If 1, the LMC should start shutting down
      * */
     int shutdown;
@@ -144,5 +152,7 @@ struct lmc {
     FILE * code_fp;
     time_t code_mod;
 };
+
+void status_field_print(struct lmc * lmc, const char *fmt, ...);
 
 #endif // LMC_H

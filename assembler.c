@@ -66,16 +66,16 @@ int assemble(struct lmc * lmc){
     char * label;
     char * addr;
     char * tok;
-    char * labels[50];
-    char * instrs[50];
-    char * addrss[50];
+    char * labels[100];
+    char * instrs[100];
+    char * addrss[100];
     char assembler_mem[100][128];
 
     // Initialise variables
     num_labels = 0;
     num_instr = 0;
 
-    for(i=0; i < 50; i++){
+    for(i=0; i < 100; i++){
         lmc->machinecode_mem[i] = 0;
         lmc->label_mem[i][0] = '\0';
         labels[i] = instrs[i] = addrss[i] = NULL;
@@ -86,7 +86,7 @@ int assemble(struct lmc * lmc){
     // This pass looks at everything, sorts ever instruction
     // into labels, instruction and address, if they are
     // supplied by the programmer.
-    for(i=0; i < 50; i++){
+    for(i=0; i < 100; i++){
 
         buf = assembler_mem[i];
 
@@ -128,7 +128,7 @@ int assemble(struct lmc * lmc){
                 instr= b1;
             }
             else{
-                log_printf(lmc, "Neither b0 or b1 was an instruction!\n");
+                status_field_print(lmc, "No instruction on line %d", i);
                 return -1;
             }
         }
@@ -145,6 +145,7 @@ int assemble(struct lmc * lmc){
         num_instr++;
     }
 
+    log_printf(lmc, "num instr%d\n",num_instr);
     for(i=0; i < num_instr; i++){
 
         address = -1;
@@ -169,7 +170,7 @@ int assemble(struct lmc * lmc){
 
                     if( labels[j] != NULL ){
                         if( ! strcmp( addr, labels[j] ) ){
-                            log_printf(lmc, "found label at %d\n", j);
+                            //log_printf(lmc, "found label at %d\n", j);
                             address = j;
                             found = 1;
                             break;
@@ -177,7 +178,9 @@ int assemble(struct lmc * lmc){
                     }
                 }
                 if( ! found ){
-                    log_printf(lmc, "no label found for: %s\n", addr);
+                    //log_printf(lmc, "no label found for: %s\n", addr);
+                    status_field_print(lmc, "%s", addr);
+                    status_field_print(lmc, "Line %d: No such label:", i);
                     return -1;
                 }
             }
@@ -191,49 +194,49 @@ int assemble(struct lmc * lmc){
         else if( ! strcasecmp( instr, "ADD" ) ){
             machinecode = 1;
             if( address < 0 ){
-                log_printf(lmc, "No address given for instruction %d (%s)\n", i, instr);
+                status_field_print(lmc, "Line %d: no address", i);
                 return -1;
             }
         }
         else if( ! strcasecmp( instr, "SUB" ) ){
             machinecode = 2;
             if( address < 0 ){
-                log_printf(lmc, "No address given for instruction %d (%s)\n", i, instr);
+                status_field_print(lmc, "Line %d: no address", i);
                 return -1;
             }
         }
         else if( ! strcasecmp( instr, "STA" ) ){
             machinecode = 3;
             if( address < 0 ){
-                log_printf(lmc, "No address given for instruction %d (%s)\n", i, instr);
+                status_field_print(lmc, "Line %d: no address", i);
                 return -1;
             }
         }
         else if( ! strcasecmp( instr, "LDA" ) ){
             machinecode = 5;
             if( address < 0 ){
-                log_printf(lmc, "No address given for instruction %d (%s)\n", i, instr);
+                status_field_print(lmc, "Line %d: no address", i);
                 return -1;
             }
         }
         else if( ! strcasecmp( instr, "BRA" ) ){
             machinecode = 6;
             if( address < 0 ){
-                log_printf(lmc, "No address given for instruction %d (%s)\n", i, instr);
+                status_field_print(lmc, "Line %d: no address", i);
                 return -1;
             }
         }
         else if( ! strcasecmp( instr, "BRZ" ) ){
             machinecode = 7;
             if( address < 0 ){
-                log_printf(lmc, "No address given for instruction %d (%s)\n", i, instr);
+                status_field_print(lmc, "Line %d: no address", i);
                 return -1;
             }
         }
         else if( ! strcasecmp( instr, "BRP" ) ){
             machinecode = 8;
             if( address < 0 ){
-                log_printf(lmc, "No address given for instruction %d (%s)\n", i, instr);
+                status_field_print(lmc, "Line %d: no address", i);
                 return -1;
             }
         }
@@ -251,16 +254,23 @@ int assemble(struct lmc * lmc){
         }
         else if( ! strcasecmp( instr, "DAT" ) ){
             machinecode = 0;
-            if( (address < -999) ||
-                (address > 999) ){
-                log_printf(lmc, "DAT: address out of range (%d)\n", address);
-                return -1;
-            }
         }
         else{
-            log_printf(lmc, "error on line %d (%s)\n", i, instr);
+            status_field_print(lmc, "(%s)", instr);
+            status_field_print(lmc, "Unknown instruction");
+            status_field_print(lmc, "Line %d:", i);
             return -1;
         }
+
+        if( (address < -999) ||
+                (address > 999) ){
+            log_printf(lmc, "DAT: address out of range (%d)\n", address);
+            status_field_print(lmc, "%d", address);
+            status_field_print(lmc, "Address out of range");
+            status_field_print(lmc, "Line %d:", i);
+            return -1;
+        }
+
 
         lmc->machinecode_mem[i] = machinecode * 100 + address;
     }
