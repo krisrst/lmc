@@ -512,14 +512,20 @@ static void* gui_thread(void * opaque){
             }
             else if( ((lmc->state == LMC_HALTED) || (lmc->state == LMC_CODING)) &&
                     c == 'p'){
-                status_field_print(lmc, "Press '?' for help.");
                 lmc->state = LMC_CODING;
                 lmc->accumulator = 0;
                 lmc->pc = 0;
                 lmc->ar = 0;
                 lmc->ir = 0;
+                lmc->outx = 0;
                 for(i=0; i < 100; i++) lmc->memory[i] = 0;
                 for(i=0; i < 100; i++) lmc->machinecode_mem [i] = 0;
+                for(i=0; i < OUTPUT_FIELD_HEIGHT; i++){
+                    memset(lmc->output_mem[i], 32, OUTPUT_FIELD_WIDTH);
+                    lmc->output_mem[i][OUTPUT_FIELD_WIDTH-1] = '\0';
+                }
+                status_field_print(lmc, "LMC has been reset!");
+                status_field_print(lmc, "Press '?' for help.");
             }
             else{
                 log_printf(lmc, "Got key: %c (%s)\n", (char) c, unctrl(c));

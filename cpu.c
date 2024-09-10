@@ -99,6 +99,7 @@ static int execute_instruction(struct lmc * lmc){
                 n = 0;
                 timeout(-1); // Blocking read
                 sprintf(buf, "%s", "");
+
                 while(1){
 
                     mvwprintw(lmc->in_win, 0, 0, "     ");
@@ -162,7 +163,7 @@ static int execute_instruction(struct lmc * lmc){
                     scroll = 1;
                 }
                 else{
-                    mvwaddch(lmc->out_win, 1, lmc->outx + 1, buf[0]);
+                    lmc->output_mem[0][lmc->outx] = buf[0];
                     lmc->outx++;
                     if(lmc->outx == OUTPUT_FIELD_WIDTH){
                         scroll = 1;
