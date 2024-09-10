@@ -12,6 +12,9 @@
 
 #define LINE_MAX_LEN 128
 
+#define OUTPUT_FIELD_WIDTH 30
+#define OUTPUT_FIELD_HEIGHT 5
+
 enum lmc_state{
     LMC_HALTED,
     LMC_RUNNING,
@@ -110,6 +113,12 @@ struct lmc {
      * Scrolling offset
      * */
     int scroll;
+
+    /*
+     * Output field
+     * */
+    int outx;
+    char output_mem[OUTPUT_FIELD_HEIGHT][OUTPUT_FIELD_WIDTH];
 
     /*
      * If 1, the LMC should start shutting down

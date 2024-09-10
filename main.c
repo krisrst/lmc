@@ -161,7 +161,7 @@ int main(int argc, char *argv[]){
         }
 
         if( mod > lmc->code_mod ){
-            log_printf(lmc, "Code file is updated.\n");
+            //log_printf(lmc, "Code file is updated.\n");
             lmc->code_mod = mod;
             read_assembler_code(lmc);
         }

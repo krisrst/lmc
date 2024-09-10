@@ -343,6 +343,10 @@ static void update_window_contents(struct lmc * lmc){
         mvwprintw(lmc->machinecode_win, 1+i,1, "%d", lmc->machinecode_mem[i+lmc->scroll]);
     }
 
+    for(i=0; i < GUI_OUTPUT_FIELD_HEIGHT; i++){
+        mvwprintw(lmc->out_win, 1+i, 1, "%s", lmc->output_mem[i]);
+    }
+
 
     sprintf(buf, "%d", lmc->pc);
     mvwprintw(lmc->pc_win, 0,0, "%s", (const char*) buf);
@@ -388,7 +392,6 @@ static void* gui_thread(void * opaque){
 
     lmc = (struct lmc *) opaque;
 
-
     while(!lmc->shutdown){
 
         update_window_contents(lmc);
@@ -397,6 +400,12 @@ static void* gui_thread(void * opaque){
         doupdate();
 
         c = getch();
+
+        if( lmc->state == LMC_RUNNING ){
+            ret = run_execution_loop_once(lmc);
+            if(ret)
+                lmc->state = LMC_HALTED;
+        }
 
         if( c == KEY_MOUSE ){
             if( getmouse(&event) == OK ){
@@ -443,29 +452,34 @@ static void* gui_thread(void * opaque){
                 }
             }
             else if( (lmc->state == LMC_CODING) && c == 's'){
-                log_printf(lmc, "in stepping state!\n");
                 lmc->state = LMC_STEPPING;
             }
             else if( (lmc->state == LMC_CODING) && c == 'r'){
-                log_printf(lmc, "in running state!\n");
                 lmc->state = LMC_RUNNING;
             }
             else if( (lmc->state == LMC_CODING) && c == KEY_UP){
-                log_printf(lmc, "key up!\n");
                 lmc->scroll++;
                 if(lmc->scroll > (100 - GUI_ASSEMBLY_FIELD_HEIGHT - 2))
                     lmc->scroll = 100 - GUI_ASSEMBLY_FIELD_HEIGHT - 2;
             }
             else if( (lmc->state == LMC_CODING) && c == KEY_DOWN){
-                log_printf(lmc, "key down!\n");
                 lmc->scroll--;
                 if(lmc->scroll < 0) lmc->scroll = 0;
             }
             else if( (lmc->state == LMC_STEPPING) && c == 's'){
                 ret = run_execution_loop_once(lmc);
-                if(ret){
+                if(ret)
                     lmc->state = LMC_HALTED;
-                }
+            }
+            else if( ((lmc->state == LMC_HALTED) || (lmc->state == LMC_CODING)) &&
+                    c == 'p'){
+                lmc->state = LMC_CODING;
+                lmc->accumulator = 0;
+                lmc->pc = 0;
+                lmc->ar = 0;
+                lmc->ir = 0;
+                for(i=0; i < 100; i++) lmc->memory[i] = 0;
+                for(i=0; i < 100; i++) lmc->machinecode_mem [i] = 0;
             }
             else{
                 log_printf(lmc, "Got key: %c (%s)\n", (char) c, unctrl(c));

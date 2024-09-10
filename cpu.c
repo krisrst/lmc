@@ -96,11 +96,10 @@ static int execute_instruction(struct lmc * lmc){
                 top_panel(lmc->in_pan);
                 n = 0;
                 timeout(-1); // Blocking read
-                buf[0] = '\0';
+                sprintf(buf, "0");
                 while(1){
 
                     mvwprintw(lmc->in_win, 0, 0, "     ");
-                    mvwprintw(lmc->in_win, 0, 0, "%s", buf);
                     update_panels();
                     doupdate();
 
@@ -130,17 +129,50 @@ static int execute_instruction(struct lmc * lmc){
                     log_printf(lmc, "invalid input! (%s)\n", buf);
                 }
 
+                mvwprintw(lmc->in_win, 0, 0, "     ");
                 lmc->accumulator = temp;
 
                 timeout(0);
             }
             else if( lmc->ar == 2 ){
-                sprintf(buf, "%d", lmc->accumulator);
-                mvwprintw(lmc->out_win, 0,0, "%s", buf);
+
+                char buf[OUTPUT_FIELD_WIDTH];
+                for(n=OUTPUT_FIELD_HEIGHT-1; n >= 1; n--){
+                    memcpy(lmc->output_mem[n], lmc->output_mem[n-1], OUTPUT_FIELD_WIDTH);
+                }
+                for(n=0; n < OUTPUT_FIELD_WIDTH; n++)
+                    buf[n] = ' ';
+                memcpy(lmc->output_mem[0], buf, OUTPUT_FIELD_WIDTH);
+                sprintf(lmc->output_mem[0], "%d", lmc->accumulator);
+
+                lmc->outx = 0;
             }
             else if( lmc->ar == 22 ){
+                int scroll = 0;
                 sprintf(buf, "%c", lmc->accumulator);
-                mvwprintw(lmc->out_win, 0,0, "%s", buf);
+
+                if( buf[0] == '\n' ){
+                    scroll = 1;
+                }
+                else{
+                    mvwaddch(lmc->out_win, 1, lmc->outx + 1, buf[0]);
+                    lmc->outx++;
+                    if(lmc->outx == OUTPUT_FIELD_WIDTH){
+                        scroll = 1;
+                        lmc->outx = 0;
+                    }
+                }
+
+                if(scroll){
+                    char buf[OUTPUT_FIELD_WIDTH];
+                    for(n=OUTPUT_FIELD_HEIGHT-1; n >= 1; n--){
+                        memcpy(lmc->output_mem[n], lmc->output_mem[n-1], OUTPUT_FIELD_WIDTH);
+                    }
+                    for(n=0; n < OUTPUT_FIELD_WIDTH; n++)
+                        buf[n] = ' ';
+                    memcpy(lmc->output_mem[0], buf, OUTPUT_FIELD_WIDTH);
+                    sprintf(lmc->output_mem[0], "%d", lmc->accumulator);
+                }
             }
             else{
                 ret = -1;
