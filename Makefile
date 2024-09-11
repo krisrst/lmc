@@ -21,7 +21,7 @@ include .depend
 	gcc -g -c -o $@ $<
 
 lmc: $(OBJ)
-	gcc -g -o $@ $(OBJ) -lncurses -lpanel
+	gcc -g -o $@ $(OBJ) -lpthread -lncurses -lpanel
 
 
 clean: $(SRC:.c=.o)
