@@ -1,0 +1,31 @@
+LDA H
+OTC
+LDA e
+OTC
+LDA i
+OTC
+LDA komma
+OTC
+LDA space
+OTC
+LDA i
+OTC
+LDA f
+OTC
+LDA i
+OTC
+LDA space
+OTC
+LDA kolon
+OTC
+LDA parsl
+OTC
+HLT
+H DAT 72
+e DAT 101
+i DAT 105
+komma DAT 44
+space DAT 32
+f DAT 102
+kolon DAT 58
+parsl DAT 41
