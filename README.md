@@ -28,7 +28,7 @@ can search for 'terminal' and launch one from the GUI.
 
 Once you are in a terminal, you must first clone this repository.
 
-`git clone git@github.com:krisrst/lmc.git'
+`git clone git@github.com:krisrst/lmc.git`
 
 So copy that into your terminal, and press enter.
 Then change directory (cd) into the repository:
